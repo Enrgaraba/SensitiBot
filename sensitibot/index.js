@@ -1,5 +1,3 @@
-
-
 /**
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
@@ -22,7 +20,7 @@ export default (app) => {
     for (const file of files) {
       if (file.endsWith('.txt')) {
         const content = await context.octokit.repos.getContent({
-          owner: payload.repository.owner.name,
+          owner: payload.repository.owner.login,
           repo: payload.repository.name,
           path: file,
           ref: payload.ref
@@ -59,30 +57,22 @@ export default (app) => {
 
     if (vulnerabilities.length > 0) {
 
-      // Create a transporter object using the default SMTP transport
-      let transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'your-email@gmail.com', // replace with your email
-          pass: 'your-email-password' // replace with your email password
-        }
+      const body = vulnerabilities.map(vulnerability => {
+        return `**${vulnerability.file}** contains the following sensitive information: ${vulnerability.issues.join(', ')}`;
+      }).join('\n');
+
+      const issue = context.issue({
+        title: 'Sensitive information found',
+        body
       });
 
-      // Setup email data
-      let mailOptions = {
-        from: '"SensitiBot" <your-email@gmail.com>', // sender address
-        to: payload.repository.owner.email, // list of receivers
-        subject: 'Vulnerabilities found in your repository', // Subject line
-        text: `The following vulnerabilities were found in your repository:\n\n${vulnerabilities.map(v => `File: ${v.file}\nIssues: ${v.issues.join(', ')}\n`).join('\n')}` // plain text body
-      };
-
-      // Send mail with defined transport object
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          return app.log.error('Error sending email:', error);
-        }
-        app.log.info('Email sent:', info.response);
-      });
+      try {
+        console.log('Creating issue with body:', body);
+        await context.octokit.issues.create(issue);
+        console.log('Issue created successfully');
+      } catch (error) {
+        console.error('Error creating issue:', error);
+      }
     }
   });
 
@@ -90,5 +80,4 @@ export default (app) => {
   // https://probot.github.io/docs/
 
   // To get your app running against GitHub, see:
-  // https://probot.github.io/docs/development/
 };
