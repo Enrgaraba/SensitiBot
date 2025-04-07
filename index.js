@@ -5,7 +5,7 @@ import { getModifiedFiles, createIssue, analyzeCsvFiles, analyzeTxtFiles } from 
  * This is the main entrypoint to your Probot app
  * @param {import('probot').Probot} app
  */
-export default (app) => {
+module.exports = (app) => {
   app.log.info("Yay, the app was loaded!");
 
   app.on("push", async (context) => {
