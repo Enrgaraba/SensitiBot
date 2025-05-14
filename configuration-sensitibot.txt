@@ -1,0 +1,50 @@
+---------------------------------------------------------
+CONFIGURATION FILE FOR SENSITIBOT
+This file allows you to customize the behavior of SensitiBot.
+You can define detection patterns, specify actions to take on detection, 
+and exclude specific content from being flagged.
+Modify the settings below to suit your repository's needs.
+IMPORTANT: Maintain the format and structure of this document at all times 
+to ensure the bot functions correctly.
+---------------------------------------------------------
+PATTERNS
+Define the patterns that the bot will use to detect sensitive content.
+Patterns must be written in JavaScript Regular Expression (regex) format.
+Each pattern is associated with a label for easier identification.
+Examples:
+- 'Phone number': Detects phone numbers in the format "123 45 67 89".
+- 'Email': Detects email addresses in standard formats.
+Add or modify the patterns list as needed to suit your specific requirements.
+---------------------------------------------------------
+PatternsList: ['Phone number': /\b\d{3} \d{2} \d{2} \d{2}\b/, 'Email': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/]
+
+---------------------------------------------------------
+FILE TYPES
+Specify the types of files that the bot should analyze.
+Use file extensions to define the file types.
+Only files matching these extensions will be scanned for sensitive content.
+The extensions supported at the moment are: .txt and .csv
+Add or modify the list as needed to suit your repository's requirements.
+---------------------------------------------------------
+FileTypes: ['txt', 'csv']
+
+---------------------------------------------------------
+ACTIONS
+Define the actions the bot will take when sensitive content is detected.
+Options:
+- Alert: Creates an issue in the repository with details of the detected content.
+- Block: Automatically removes the detected content in a Pull Request.
+- Full: Performs both actions (Alert and Block).
+Choose the action that best suits your workflow and security requirements.
+---------------------------------------------------------
+OnDetection: Alert
+
+---------------------------------------------------------
+EXCLUSIONS
+Specify a list of words, phrases, or patterns that the bot should ignore.
+Even if these items match a detection pattern, they will be excluded from alerts or actions.
+Use this section to whitelist specific content that is safe or expected in your repository.
+---------------------------------------------------------
+Exclusions: ['example@example.com', '123 45 67 89']
+
+

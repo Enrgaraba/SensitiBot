@@ -16,6 +16,18 @@ export const patterns = {
     }
     return detectedIssues;
   }
+
+  export function detectSensitiveDataForPR(file, content, context) {
+    const detectedMatches = [];
+    for (const [issue, regex] of Object.entries(patterns)) {
+      const matches = content.match(regex);
+      if (matches) {
+        context.log.warn(`${issue} found in ${file}: ${matches.join(', ')}`);
+        detectedMatches.push(...matches);
+      }
+    }
+    return detectedMatches;
+  }
   
   export function detectSensitiveDataCsv(file, content, context) {
     const detectedIssues = [];

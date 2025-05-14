@@ -33,8 +33,7 @@ const appFunction = (app) => {
     context.log.info("Files in the push", files);
     
     let vulnerabilities = [];
-    const txtVulnerabilities = await analyzeTxtFiles(context, payload, files);
-    vulnerabilities = vulnerabilities.concat(txtVulnerabilities);
+    vulnerabilities = vulnerabilities.concat(await analyzeTxtFiles(context, payload, files));
     vulnerabilities = vulnerabilities.concat(await analyzeCsvFiles(context, payload, files));
     
     if (vulnerabilities.length > 0) {
@@ -42,7 +41,7 @@ const appFunction = (app) => {
       await createIssue(context, vulnerabilities);
 
       // Create a single pull request for all changes
-      await createPullRequestToRemoveSensitiveData(context, payload, vulnerabilities);
+      await createPullRequestToRemoveSensitiveData(context, payload);
     }
   });
 };
