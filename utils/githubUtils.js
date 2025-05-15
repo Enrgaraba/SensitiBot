@@ -1,20 +1,24 @@
 import Papa from "papaparse";
 import { fetchFileContent } from "./fileUtils.js";
-import { detectSensitiveDataTxt, detectSensitiveDataForPR, detectSensitiveDataCsv, patterns } from "./securityPatterns.js";
+import { detectSensitiveDataTxt, detectSensitiveDataCsv } from "./securityPatterns.js";
 
 export function getModifiedFiles(payload) {
-  return payload.commits.flatMap(commit => commit.added.concat(commit.modified));
+  // Exclude the configuration file from the list of modified files
+  const configFile = "configuration-sensitibot.txt";
+  return payload.commits
+    .flatMap(commit => commit.added.concat(commit.modified))
+    .filter(file => !file.endsWith(configFile));
 }
 
-export async function analyzeTxtFiles(context, payload, files) {
+export async function analyzeTxtFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
     if (file.endsWith('.txt')) {
       const fileContent = await fetchFileContent(context, payload, file);
       if (fileContent) {
-        const fileVulnerabilities = detectSensitiveDataTxt(file, fileContent, context);
-        if (fileVulnerabilities.length > 0) {
-          vulnerabilities.push({ file, issues: fileVulnerabilities });
+        const detected = detectSensitiveDataTxt(fileContent, patterns, exclusions);
+        for (const { label, matches } of detected) {
+          vulnerabilities.push({ file, label, matches });
         }
       }
     }
@@ -22,23 +26,15 @@ export async function analyzeTxtFiles(context, payload, files) {
   return vulnerabilities;
 }
 
-export async function analyzeCsvFiles(context, payload, files) {
+export async function analyzeCsvFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
     if (file.endsWith('.csv')) {
       const fileContent = await fetchFileContent(context, payload, file);
       if (fileContent) {
-        const parsedData = Papa.parse(fileContent, { header: false, skipEmptyLines: "greedy" });
-        let fileVulnerabilities = [];
-
-        for (const row of parsedData.data) {
-          if (row.some(cell => detectSensitiveDataCsv(file, cell, context).length > 0)) {
-            fileVulnerabilities.push(...detectSensitiveDataCsv(file, row.join(','), context));
-          }
-        }
-
-        if (fileVulnerabilities.length > 0) {
-          vulnerabilities.push({ file, issues: [...new Set(fileVulnerabilities)] });
+        const detected = detectSensitiveDataCsv(fileContent, patterns, exclusions);
+        for (const { label, matches } of detected) {
+          vulnerabilities.push({ file, label, matches });
         }
       }
     }

@@ -1,49 +1,60 @@
 import Papa from "papaparse";
 
-export const patterns = {
-    'Phone number': /\b\d{3} \d{2} \d{2} \d{2}\b/,
-    'Credit card number': /\b(?:\d[ -]*?){13,16}\b/,
-    'Email address': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/
-  };
+// Default patterns to use if none are provided in the configuration
+export const defaultPatterns = [
+  ['Phone number', '\\b\\d{3} \\d{2} \\d{2} \\d{2}\\b'],
+  ['Credit card number', '\\b(?:\\d[ -]*?){13,16}\\b'],
+  ['Email address', '\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b']
+];
 
-  export function detectSensitiveDataTxt(file, content, context) {
-    const detectedIssues = [];
-    for (const [issue, regex] of Object.entries(patterns)) {
-      if (regex.test(content)) {
-        context.log.warn(`${issue} found in ${file}`);
-        detectedIssues.push(issue);
+// For PRs: use provided patterns or fallback to defaultPatterns
+export function detectSensitiveDataForPR(file, content, context, patterns) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detectedMatches = [];
+  for (const [label, pattern] of patternsToUse) {
+    const regex = new RegExp(pattern, "g");
+    const matches = content.match(regex);
+    if (matches) {
+      context.log.warn(`${label} found in ${file}: ${matches.join(', ')}`);
+      detectedMatches.push(...matches);
+    }
+  }
+  return detectedMatches;
+}
+
+export function detectSensitiveDataTxt(content, patterns, exclusions) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detected = [];
+  for (const [label, pattern] of patternsToUse) {
+    const regex = new RegExp(pattern, "g");
+    const matches = content.match(regex);
+    if (matches) {
+      const filteredMatches = matches.filter(match => !exclusions.includes(match));
+      if (filteredMatches.length > 0) {
+        detected.push({ label, matches: filteredMatches });
       }
     }
-    return detectedIssues;
   }
+  return detected;
+}
 
-  export function detectSensitiveDataForPR(file, content, context) {
-    const detectedMatches = [];
-    for (const [issue, regex] of Object.entries(patterns)) {
-      const matches = content.match(regex);
+export function detectSensitiveDataCsv(content, patterns, exclusions) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detected = [];
+  const { data } = Papa.parse(content, { header: false, skipEmptyLines: true });
+
+  for (const row of data) {
+    const rowString = row.join(',');
+    for (const [label, pattern] of patternsToUse) {
+      const regex = new RegExp(pattern, "g");
+      const matches = rowString.match(regex);
       if (matches) {
-        context.log.warn(`${issue} found in ${file}: ${matches.join(', ')}`);
-        detectedMatches.push(...matches);
-      }
-    }
-    return detectedMatches;
-  }
-  
-  export function detectSensitiveDataCsv(file, content, context) {
-    const detectedIssues = [];
-    
-    // Parsear el contenido CSV
-    const { data } = Papa.parse(content, { header: false, skipEmptyLines: true });
-  
-    // Recorrer las filas y buscar datos sensibles
-    for (const row of data) {
-      for (const [issue, regex] of Object.entries(patterns)) {
-        if (row.some(cell => regex.test(cell))) {
-          context.log.warn(`${issue} found in ${file}`);
-          detectedIssues.push(issue);
-          break;
+        const filteredMatches = matches.filter(match => !exclusions.includes(match));
+        if (filteredMatches.length > 0) {
+          detected.push({ label, matches: filteredMatches });
         }
       }
     }
-    return detectedIssues;
   }
+  return detected;
+}
