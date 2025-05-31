@@ -1,6 +1,13 @@
 import Papa from "papaparse";
 import { fetchFileContent } from "./fileUtils.js";
-import { detectSensitiveDataTxt, detectSensitiveDataCsv, detectSensitiveDataForPR } from "./securityPatterns.js";
+import {
+  detectSensitiveDataTxt,
+  detectSensitiveDataCsv,
+  detectSensitiveDataForPR,
+  detectSensitiveDataMd,
+  detectSensitiveDataJson,
+  detectSensitiveDataYaml
+} from "./securityPatterns.js";
 
 export function getModifiedFiles(payload) {
   // Exclude the configuration file from the list of modified files
@@ -33,6 +40,54 @@ export async function analyzeCsvFiles(context, payload, files, patterns, exclusi
       const fileContent = await fetchFileContent(context, payload, file);
       if (fileContent) {
         const detected = detectSensitiveDataCsv(fileContent, patterns, exclusions);
+        for (const { label, matches } of detected) {
+          vulnerabilities.push({ file, label, matches });
+        }
+      }
+    }
+  }
+  return vulnerabilities;
+}
+
+export async function analyzeMdFiles(context, payload, files, patterns, exclusions) {
+  const vulnerabilities = [];
+  for (const file of files) {
+    if (file.endsWith('.md')) {
+      const fileContent = await fetchFileContent(context, payload, file);
+      if (fileContent) {
+        const detected = detectSensitiveDataMd(fileContent, patterns, exclusions);
+        for (const { label, matches } of detected) {
+          vulnerabilities.push({ file, label, matches });
+        }
+      }
+    }
+  }
+  return vulnerabilities;
+}
+
+export async function analyzeJsonFiles(context, payload, files, patterns, exclusions) {
+  const vulnerabilities = [];
+  for (const file of files) {
+    if (file.endsWith('.json')) {
+      const fileContent = await fetchFileContent(context, payload, file);
+      if (fileContent) {
+        const detected = detectSensitiveDataJson(fileContent, patterns, exclusions);
+        for (const { label, matches } of detected) {
+          vulnerabilities.push({ file, label, matches });
+        }
+      }
+    }
+  }
+  return vulnerabilities;
+}
+
+export async function analyzeYamlFiles(context, payload, files, patterns, exclusions) {
+  const vulnerabilities = [];
+  for (const file of files) {
+    if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+      const fileContent = await fetchFileContent(context, payload, file);
+      if (fileContent) {
+        const detected = detectSensitiveDataYaml(fileContent, patterns, exclusions);
         for (const { label, matches } of detected) {
           vulnerabilities.push({ file, label, matches });
         }

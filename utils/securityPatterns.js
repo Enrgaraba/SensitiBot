@@ -66,3 +66,63 @@ export function detectSensitiveDataCsv(content, patterns, exclusions) {
   }
   return detected;
 }
+
+export function detectSensitiveDataMd(content, patterns, exclusions) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detected = [];
+  for (const [label, pattern] of patternsToUse) {
+    const regexPattern = pattern.replace(/\\\\/g, '\\');
+    const regex = new RegExp(regexPattern, "g");
+    const matches = content.match(regex);
+    if (matches) {
+      const filteredMatches = matches.filter(match => !exclusions.includes(match));
+      if (filteredMatches.length > 0) {
+        detected.push({ label, matches: filteredMatches });
+      }
+    }
+  }
+  return detected;
+}
+
+export function detectSensitiveDataJson(content, patterns, exclusions) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detected = [];
+  let jsonObj;
+  try {
+    jsonObj = JSON.parse(content);
+  } catch (e) {
+    return detected; // Si no es JSON válido, no detecta nada
+  }
+  const jsonString = JSON.stringify(jsonObj);
+  for (const [label, pattern] of patternsToUse) {
+    const regexPattern = pattern.replace(/\\\\/g, '\\');
+    const regex = new RegExp(regexPattern, "g");
+    const matches = jsonString.match(regex);
+    if (matches) {
+      const filteredMatches = matches.filter(match => !exclusions.includes(match));
+      if (filteredMatches.length > 0) {
+        detected.push({ label, matches: filteredMatches });
+      }
+    }
+  }
+  return detected;
+}
+
+export function detectSensitiveDataYaml(content, patterns, exclusions) {
+  const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
+  const detected = [];
+  // No se parsea YAML, se busca sobre el texto plano
+  for (const [label, pattern] of patternsToUse) {
+    const regexPattern = pattern.replace(/\\\\/g, '\\');
+    const regex = new RegExp(regexPattern, "g");
+    const matches = content.match(regex);
+    if (matches) {
+      const filteredMatches = matches.filter(match => !exclusions.includes(match));
+      if (filteredMatches.length > 0) {
+        detected.push({ label, matches: filteredMatches });
+      }
+    }
+  }
+  return detected;
+}
+

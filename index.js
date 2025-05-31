@@ -3,6 +3,9 @@ import {
   createIssue, 
   analyzeCsvFiles, 
   analyzeTxtFiles, 
+  analyzeMdFiles,
+  analyzeJsonFiles,
+  analyzeYamlFiles,
   createPullRequestToRemoveSensitiveData 
 } from "./utils/githubUtils.js";
 import { parseConfiguration } from "./utils/fileUtils.js";
@@ -76,8 +79,14 @@ const appFunction = (app) => {
     // Separate files by type
     const txtFiles = filteredFiles.filter(file => file.endsWith('.txt'));
     const csvFiles = filteredFiles.filter(file => file.endsWith('.csv'));
+    const mdFiles = filteredFiles.filter(file => file.endsWith('.md'));
+    const jsonFiles = filteredFiles.filter(file => file.endsWith('.json'));
+    const yamlFiles = filteredFiles.filter(file => file.endsWith('.yaml') || file.endsWith('.yml'));
     console.log("DEBUG: TXT files:", txtFiles);
     console.log("DEBUG: CSV files:", csvFiles);
+    console.log("DEBUG: MD files:", mdFiles);
+    console.log("DEBUG: JSON files:", jsonFiles);
+    console.log("DEBUG: YAML files:", yamlFiles);
 
     let vulnerabilities = [];
 
@@ -90,6 +99,21 @@ const appFunction = (app) => {
       const csvVulns = await analyzeCsvFiles(context, payload, csvFiles, config.patterns, config.exclusions);
       console.log("DEBUG: CSV vulnerabilities:", csvVulns);
       vulnerabilities = vulnerabilities.concat(csvVulns);
+    }
+    if (mdFiles.length > 0) {
+      const mdVulns = await analyzeMdFiles(context, payload, mdFiles, config.patterns, config.exclusions);
+      console.log("DEBUG: MD vulnerabilities:", mdVulns);
+      vulnerabilities = vulnerabilities.concat(mdVulns);
+    }
+    if (jsonFiles.length > 0) {
+      const jsonVulns = await analyzeJsonFiles(context, payload, jsonFiles, config.patterns, config.exclusions);
+      console.log("DEBUG: JSON vulnerabilities:", jsonVulns);
+      vulnerabilities = vulnerabilities.concat(jsonVulns);
+    }
+    if (yamlFiles.length > 0) {
+      const yamlVulns = await analyzeYamlFiles(context, payload, yamlFiles, config.patterns, config.exclusions);
+      console.log("DEBUG: YAML vulnerabilities:", yamlVulns);
+      vulnerabilities = vulnerabilities.concat(yamlVulns);
     }
 
     console.log("DEBUG: All vulnerabilities found:", vulnerabilities);

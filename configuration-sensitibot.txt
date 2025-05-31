@@ -25,7 +25,7 @@ FILE TYPES
 Specify the types of files that the bot should analyze.
 Use file extensions to define the file types.
 Only files matching these extensions will be scanned for sensitive content.
-The extensions supported at the moment are: .txt and .csv
+The extensions supported at the moment are: .txt, .csv, .md, .json, .yaml and .yml
 Add or modify the list as needed to suit your repository's requirements.
 ---------------------------------------------------------
 FileTypes: ['txt', 'csv']
