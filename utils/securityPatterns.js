@@ -8,15 +8,21 @@ export const defaultPatterns = [
 ];
 
 // For PRs: use provided patterns or fallback to defaultPatterns
-export function detectSensitiveDataForPR(file, content, context, patterns) {
+export function detectSensitiveDataForPR(file, content, context, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detectedMatches = [];
   for (const [label, pattern] of patternsToUse) {
     const regex = new RegExp(pattern, "g");
     const matches = content.match(regex);
     if (matches) {
-      context.log.warn(`${label} found in ${file}: ${matches.join(', ')}`);
-      detectedMatches.push(...matches);
+      // Filtra exclusiones si las hay
+      const filteredMatches = exclusions && exclusions.length > 0
+        ? matches.filter(match => !exclusions.includes(match))
+        : matches;
+      if (filteredMatches.length > 0) {
+        context.log.warn(`${label} found in ${file}: ${filteredMatches.join(', ')}`);
+        detectedMatches.push(...filteredMatches);
+      }
     }
   }
   return detectedMatches;
@@ -26,7 +32,9 @@ export function detectSensitiveDataTxt(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
   for (const [label, pattern] of patternsToUse) {
-    const regex = new RegExp(pattern, "g");
+    // Desescapa las barras dobles a simples
+    const regexPattern = pattern.replace(/\\\\/g, '\\');
+    const regex = new RegExp(regexPattern, "g");
     const matches = content.match(regex);
     if (matches) {
       const filteredMatches = matches.filter(match => !exclusions.includes(match));

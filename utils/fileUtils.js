@@ -15,23 +15,47 @@ export async function fetchFileContent(context, payload, file) {
 }
 
 export const parseConfiguration = (configContent) => {
-    const config = {};
-  
-    // Extract patterns
-    const patternsMatch = configContent.match(/PatternsList:\s*\[(.*?)\]/s);
-    config.patterns = patternsMatch ? eval(`[${patternsMatch[1]}]`) : [];
-  
-    // Extract file types
-    const fileTypesMatch = configContent.match(/FileTypes:\s*\[(.*?)\]/s);
-    config.fileTypes = fileTypesMatch ? eval(`[${fileTypesMatch[1]}]`) : [];
-  
-    // Extract onDetection action
-    const onDetectionMatch = configContent.match(/OnDetection:\s*(\w+)/);
-    config.onDetection = onDetectionMatch ? onDetectionMatch[1] : "Alert";
-  
-    // Extract exclusions
-    const exclusionsMatch = configContent.match(/Exclusions:\s*\[(.*?)\]/s);
-    config.exclusions = exclusionsMatch ? eval(`[${exclusionsMatch[1]}]`) : [];
-  
-    return config;
-  };
+  const config = {};
+
+  // Extraer patrones de líneas tipo PatternX: ['Label': /regex/]
+  const patterns = [];
+  const patternLineRegex = /Pattern\d+:\s*\[\s*'([^']+)':\s*\/(.+)\/\s*\]/g;
+  let match;
+  while ((match = patternLineRegex.exec(configContent)) !== null) {
+    const label = match[1];
+    const pattern = match[2];
+    patterns.push([label, pattern]); // <-- Cambiado a formato [label, pattern]
+  }
+  config.patterns = patterns;
+
+  // Extract file types
+  const fileTypesMatch = configContent.match(/FileTypes:\s*\[(.*?)\]/s);
+  if (fileTypesMatch) {
+    config.fileTypes = fileTypesMatch[1]
+      .split(',')
+      .map(ext => ext.replace(/['"\s]/g, ''))
+      .filter(Boolean);
+  } else {
+    config.fileTypes = [];
+  }
+
+  // Extract onDetection action
+  const onDetectionMatch = configContent.match(/OnDetection:\s*(\w+)/);
+  config.onDetection = onDetectionMatch ? onDetectionMatch[1] : "Alert";
+
+  // Extract exclusions
+  const exclusionsMatch = configContent.match(/Exclusions:\s*\[(.*?)\]/s);
+  if (exclusionsMatch) {
+    config.exclusions = exclusionsMatch[1]
+      .split(',')
+      .map(item => {
+        const trimmed = item.trim();
+        return trimmed.replace(/^['"]|['"]$/g, '');
+      })
+      .filter(Boolean);
+  } else {
+    config.exclusions = [];
+  }
+
+  return config;
+};

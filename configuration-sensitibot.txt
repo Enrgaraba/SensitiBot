@@ -10,13 +10,15 @@ to ensure the bot functions correctly.
 PATTERNS
 Define the patterns that the bot will use to detect sensitive content.
 Patterns must be written in JavaScript Regular Expression (regex) format.
-Each pattern is associated with a label for easier identification.
+Each pattern is associated with a label for easier identification. 
+The pattern must be in this format 'Label': /regex/ 
 Examples:
 - 'Phone number': Detects phone numbers in the format "123 45 67 89".
 - 'Email': Detects email addresses in standard formats.
 Add or modify the patterns list as needed to suit your specific requirements.
 ---------------------------------------------------------
-PatternsList: ['Phone number': /\b\d{3} \d{2} \d{2} \d{2}\b/, 'Email': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/]
+Pattern1: ['Phone number': /\b\d{3} \d{2} \d{2} \d{2}\b/] 
+Pattern2: ['Email': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/]
 
 ---------------------------------------------------------
 FILE TYPES

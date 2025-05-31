@@ -1,6 +1,6 @@
 import Papa from "papaparse";
 import { fetchFileContent } from "./fileUtils.js";
-import { detectSensitiveDataTxt, detectSensitiveDataCsv } from "./securityPatterns.js";
+import { detectSensitiveDataTxt, detectSensitiveDataCsv, detectSensitiveDataForPR } from "./securityPatterns.js";
 
 export function getModifiedFiles(payload) {
   // Exclude the configuration file from the list of modified files
@@ -44,7 +44,7 @@ export async function analyzeCsvFiles(context, payload, files, patterns, exclusi
 
 export async function createIssue(context, vulnerabilities) {
   const body = vulnerabilities
-    .map(vuln => `**${vuln.file}** contains: ${vuln.issues.join(', ')}`)
+    .map(vuln => `**${vuln.file}** Contains (${vuln.label}): ${vuln.matches.join(', ')}`)
     .join('\n');
   const issue = context.issue({
     title: 'Sensitive information found',
@@ -60,7 +60,7 @@ export async function createIssue(context, vulnerabilities) {
   }
 }
 
-export async function createPullRequestToRemoveSensitiveData(context, payload) {
+export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions) {
   const branchName = `remove-sensitive-data-${Date.now()}`;
   const baseBranch = payload.repository.default_branch;
   const modifiedFiles = getModifiedFiles(payload);
@@ -72,7 +72,8 @@ export async function createPullRequestToRemoveSensitiveData(context, payload) {
   for (const file of txtFiles) {
     const fileContent = await fetchFileContent(context, payload, file);
     if (fileContent) {
-      const fileVulnerabilities = detectSensitiveDataForPR(file, fileContent, context);
+      // Ahora pasamos patterns y exclusions
+      const fileVulnerabilities = detectSensitiveDataForPR(file, fileContent, context, patterns, exclusions);
 
       // Log detected vulnerabilities
       console.log(`Detected vulnerabilities in ${file}:`, fileVulnerabilities);

@@ -41,48 +41,70 @@ const appFunction = (app) => {
       });
       configContent = Buffer.from(fileContent.data.content, "base64").toString("utf-8");
       context.log.info("Configuration file content:", configContent);
+      console.log("DEBUG: Raw config content:", configContent);
     } catch (error) {
       context.log.error(`Error reading configuration file: ${error.message}`);
+      console.error("DEBUG: Error reading configuration file:", error);
       return;
     }
 
     // Parse the configuration file
-    const config = parseConfiguration(configContent);
+    let config;
+    try {
+      config = parseConfiguration(configContent);
+      context.log.info("Parsed configuration:", config);
+      console.log("DEBUG: Parsed config object:", config);
+    } catch (error) {
+      context.log.error(`Error parsing configuration file: ${error.message}`);
+      console.error("DEBUG: Error parsing configuration file:", error);
+      return;
+    }
 
     // Get the modified files in the push
     const { payload } = context;
     const files = getModifiedFiles(payload);
     context.log.info("Files in the push", files);
+    console.log("DEBUG: Files in the push:", files);
 
     // Filter files based on the configured file types
     const filteredFiles = files.filter(file => 
       config.fileTypes.some(ext => file.endsWith(ext))
     );
+    context.log.info("Filtered files by type:", filteredFiles);
+    console.log("DEBUG: Filtered files by type:", filteredFiles);
 
     // Separate files by type
     const txtFiles = filteredFiles.filter(file => file.endsWith('.txt'));
     const csvFiles = filteredFiles.filter(file => file.endsWith('.csv'));
+    console.log("DEBUG: TXT files:", txtFiles);
+    console.log("DEBUG: CSV files:", csvFiles);
 
     let vulnerabilities = [];
 
     if (txtFiles.length > 0) {
-      vulnerabilities = vulnerabilities.concat(
-        await analyzeTxtFiles(context, payload, txtFiles, config.patterns, config.exclusions)
-      );
+      const txtVulns = await analyzeTxtFiles(context, payload, txtFiles, config.patterns, config.exclusions);
+      console.log("DEBUG: TXT vulnerabilities:", txtVulns);
+      vulnerabilities = vulnerabilities.concat(txtVulns);
     }
     if (csvFiles.length > 0) {
-      vulnerabilities = vulnerabilities.concat(
-        await analyzeCsvFiles(context, payload, csvFiles, config.patterns, config.exclusions)
-      );
+      const csvVulns = await analyzeCsvFiles(context, payload, csvFiles, config.patterns, config.exclusions);
+      console.log("DEBUG: CSV vulnerabilities:", csvVulns);
+      vulnerabilities = vulnerabilities.concat(csvVulns);
     }
+
+    console.log("DEBUG: All vulnerabilities found:", vulnerabilities);
 
     if (vulnerabilities.length > 0) {
       if (config.onDetection === "Alert" || config.onDetection === "Full") {
+        console.log("DEBUG: Creating issue for vulnerabilities...");
         await createIssue(context, vulnerabilities);
       }
       if (config.onDetection === "Block" || config.onDetection === "Full") {
-        await createPullRequestToRemoveSensitiveData(context, payload);
+        console.log("DEBUG: Creating PR to remove sensitive data...");
+        await createPullRequestToRemoveSensitiveData(context, payload, config.patterns, config.exclusions);
       }
+    } else {
+      console.log("DEBUG: No vulnerabilities found.");
     }
   });
 };
