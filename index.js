@@ -82,12 +82,13 @@ const appFunction = (app) => {
     const mdFiles = filteredFiles.filter(file => file.endsWith('.md'));
     const jsonFiles = filteredFiles.filter(file => file.endsWith('.json'));
     const yamlFiles = filteredFiles.filter(file => file.endsWith('.yaml') || file.endsWith('.yml'));
+    /*
     console.log("DEBUG: TXT files:", txtFiles);
     console.log("DEBUG: CSV files:", csvFiles);
     console.log("DEBUG: MD files:", mdFiles);
     console.log("DEBUG: JSON files:", jsonFiles);
     console.log("DEBUG: YAML files:", yamlFiles);
-
+    */
     let vulnerabilities = [];
 
     if (txtFiles.length > 0) {
@@ -125,7 +126,7 @@ const appFunction = (app) => {
       }
       if (config.onDetection === "Block" || config.onDetection === "Full") {
         console.log("DEBUG: Creating PR to remove sensitive data...");
-        await createPullRequestToRemoveSensitiveData(context, payload, config.patterns, config.exclusions);
+        await createPullRequestToRemoveSensitiveData(context, payload, config.patterns, config.exclusions, config.fileTypes);
       }
     } else {
       console.log("DEBUG: No vulnerabilities found.");

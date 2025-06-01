@@ -115,36 +115,65 @@ export async function createIssue(context, vulnerabilities) {
   }
 }
 
-export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions) {
+export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions, fileTypes) {
   const branchName = `remove-sensitive-data-${Date.now()}`;
   const baseBranch = payload.repository.default_branch;
   const modifiedFiles = getModifiedFiles(payload);
-  const txtFiles = modifiedFiles.filter(file => file.endsWith('.txt'));
+  console.log(`Modified files: ${fileTypes.join(', ')}`);
+  console.log(`modifiedFiles: ${modifiedFiles.join(', ')}`);
+
+  // Soportar todos los tipos de archivos
+  const supportedExtensions = [
+    { ext: '.txt', type: 'txt' },
+    { ext: '.csv', type: 'csv' },
+    { ext: '.md', type: 'md' },
+    { ext: '.json', type: 'json' },
+    { ext: '.yaml', type: 'yaml' },
+    { ext: '.yml', type: 'yml' }
+  ];
 
   const vulnerabilities = {};
   const changes = [];
 
-  for (const file of txtFiles) {
-    const fileContent = await fetchFileContent(context, payload, file);
-    if (fileContent) {
-      // Ahora pasamos patterns y exclusions
-      const fileVulnerabilities = detectSensitiveDataForPR(file, fileContent, context, patterns, exclusions);
+  for (const file of modifiedFiles) {
+    const extObj = supportedExtensions.find(e => file.endsWith(e.ext));
+    console.log(`Processing file: ${file}, extension object:`, extObj);
+    if (!extObj) continue;
+    console.log(`File type detected: ${extObj.type}`);
+    // Solo procesar si el tipo está permitido en la configuración
+    if (!fileTypes.includes(extObj.ext)) continue;
 
-      // Log detected vulnerabilities
+    const fileContent = await fetchFileContent(context, payload, file);
+    console.log(`Fetched content for ${file}:`, fileContent ? 'Content retrieved' : 'No content found');
+    if (fileContent) {
+      // Detecta tipo de archivo y pásalo a la función, junto con fileTypes
+      const fileVulnerabilities = detectSensitiveDataForPR(
+        file,
+        fileContent,
+        context,
+        patterns,
+        exclusions,
+        extObj.type,
+        fileTypes
+      );
+
       console.log(`Detected vulnerabilities in ${file}:`, fileVulnerabilities);
 
+      // Filtra solo los objetos con matches reales
+      console.log(`a`);
       if (fileVulnerabilities.length > 0) {
         vulnerabilities[file] = fileVulnerabilities;
-
-        // Replace vulnerabilities with marker
         let updatedContent = fileContent;
         for (const vuln of fileVulnerabilities) {
-          const escapedVuln = vuln.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const regex = new RegExp(escapedVuln, 'g');
-          updatedContent = updatedContent.replace(regex, '[DELETED VULNERABILITY]');
+          if (Array.isArray(vuln.matches)) {
+            for (const m of vuln.matches) {
+              const escapedVuln = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const regex = new RegExp(escapedVuln, 'g');
+              updatedContent = updatedContent.replace(regex, '[DELETED VULNERABILITY]');
+            }
+          }
         }
 
-        // Log updated content
         console.log(`Updated content for ${file}:\n`, updatedContent);
 
         changes.push({
@@ -192,7 +221,7 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
     await context.octokit.pulls.create({
       owner: payload.repository.owner.login,
       repo: payload.repository.name,
-      title: 'Remove sensitive data from text files',
+      title: 'Remove sensitive data from files',
       head: branchName,
       base: baseBranch,
       body: `This pull request removes sensitive data from the following files:\n\n${Object.keys(vulnerabilities)
@@ -202,6 +231,6 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
 
     context.log.info('Pull request created successfully');
   } else {
-    context.log.info('No vulnerabilities found in text files');
+    context.log.info('No vulnerabilities found in supported files');
   }
 }
