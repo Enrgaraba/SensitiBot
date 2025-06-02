@@ -17,7 +17,7 @@ It supports multiple file types, customizable detection patterns, AI-based detec
 - ⚙️ **Configurable Actions:** Alert via GitHub issues, automatically create pull requests to remove sensitive data, or both.
 - 🚫 **Exclusions:** Define words, phrases, or patterns to ignore.
 - 📝 **Custom AI Prompt:** Personalize the prompt sent to Gemini for advanced AI detection.
-- 📂 **Supports Multiple File Types:** Works with `.txt`, `.csv`, `.md`, `.json`, `.yaml`, `.yml`, and more.
+- 📂 **Supports Multiple File Types:** Works with `.txt`, `.csv`, `.md`, `.json`, `.yaml`, `.yml`.
 
 ---
 
