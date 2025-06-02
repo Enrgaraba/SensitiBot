@@ -45,7 +45,6 @@ You can get the latest template from this repository.
 - `.json`
 - `.yaml`, `.yml`
 
-
 ---
 
 ## 🧩 Detection Patterns
