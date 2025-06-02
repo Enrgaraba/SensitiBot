@@ -1,13 +1,19 @@
 ---------------------------------------------------------
 CONFIGURATION FILE FOR SENSITIBOT
 This file allows you to customize the behavior of SensitiBot.
-You can define detection patterns, specify actions to take on detection, 
-and exclude specific content from being flagged.
+You can define detection patterns, specify the types of files that the bot processes,
+specify actions to take on detection, exclude specific content from being flagged,
+specify the detection engine to use and customize the prompt that the bot will use.
 Modify the settings below to suit your repository's needs.
+The information in parentheses in the section titles indicates the name of 
+the variable that must be written in the space for each configuration option. 
+This variable must be followed by : and a space to enable the bot to identify it.
+If any of the options is left blank, the bot will use the default parameters, 
+which you can find in the project README.md.
 IMPORTANT: Maintain the format and structure of this document at all times 
 to ensure the bot functions correctly.
 ---------------------------------------------------------
-PATTERNS
+PATTERNS (Pattern1)
 Define the patterns that the bot will use to detect sensitive content.
 Patterns must be written in JavaScript Regular Expression (regex) format.
 Each pattern is associated with a label for easier identification. 
@@ -21,7 +27,7 @@ Pattern1: ['Phone number': /\b\d{3} \d{2} \d{2} \d{2}\b/]
 Pattern2: ['Email': /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/]
 
 ---------------------------------------------------------
-FILE TYPES
+FILE TYPES (FileTypes)
 Specify the types of files that the bot should analyze.
 Use file extensions to define the file types.
 Only files matching these extensions will be scanned for sensitive content.
@@ -31,7 +37,7 @@ Add or modify the list as needed to suit your repository's requirements.
 FileTypes: ['txt', 'csv']
 
 ---------------------------------------------------------
-ACTIONS
+ACTIONS (OnDetection)
 Define the actions the bot will take when sensitive content is detected.
 Options:
 - Alert: Creates an issue in the repository with details of the detected content.
@@ -42,11 +48,76 @@ Choose the action that best suits your workflow and security requirements.
 OnDetection: Alert
 
 ---------------------------------------------------------
-EXCLUSIONS
+EXCLUSIONS (Exclusions)
 Specify a list of words, phrases, or patterns that the bot should ignore.
 Even if these items match a detection pattern, they will be excluded from alerts or actions.
 Use this section to whitelist specific content that is safe or expected in your repository.
+This section does not apply to Gemini AI analysis.
 ---------------------------------------------------------
 Exclusions: ['example@example.com', '123 45 67 89']
+
+---------------------------------------------------------
+DETECTION ENGINE (DetectionEngine)
+Define which detection engine the bot should use.
+This option only apply if the OnDetection option is in Alert or Full mode.
+Options:
+- patterns: Use traditional regex/pattern-based detection (default).
+- gemini: Use Google Gemini AI for sensitive content detection (recommended for advanced analysis).
+
+DISCLAIMER: Gemini AI's accuracy is relatively low on large files; for greater security, 
+pattern-based detection is always preferable.
+
+---------------------------------------------------------
+DetectionEngine: gemini
+---------------------------------------------------------
+GEMINI PROMPT (GeminiPrompt)
+Define a custom prompt for Gemini AI detection. You must use the variables:
+- {type}: file type (e.g., txt, csv, md, json, yaml, yml)
+- {content}: file content. This varianle is set to be located at the end of the prompt.
+You must write the prompt in only one line. The following example is just to show how a 
+good prompt should be written.
+
+Example promt:
+
+Analyze the following content from a file of type "{type}" and ONLY respond if you detect sensitive data.
+If you detect anything, respond using exactly this Markdown format:
+
+detected:
+
+*   **Data type:** \`example found\` (brief explanation if applicable)
+*   **Other type:** \`another example\` (brief explanation if applicable)
+*   **Other type:** \`another example\` (brief explanation if applicable)
+
+Where "Data type" should be the actual type of sensitive data detected (for example: Credit card, Password, Token, etc.) and "example found" should be a real example of the data found in the content.
+
+**You must enumerate ALL different types of sensitive data you find in the content, each on a separate line.**
+
+**Do not omit any type of sensitive data. If there are several, list them all, even if they are of the same type but with different values.**
+
+If there is nothing sensitive, respond exactly: No sensitive content detected.
+
+Content:
+{content}
+---------------------------------------------------------
+GeminiPrompt: [Analyze the following content from a file of type "{type}" and ONLY respond if you detect any email addresses or feminine names.
+If you detect anything, respond using exactly this Markdown format:
+
+detected:
+
+Email: `example@example.com` (brief explanation if applicable)
+
+Feminine name: `Ana` (brief explanation if applicable)
+
+Feminine name: `María` (brief explanation if applicable)
+
+Where "Email" should be the exact email address detected, and "Feminine name" should be the exact feminine name detected as it appears in the content.
+
+You must enumerate ALL different email addresses and feminine names you find in the content, each on a separate line.
+Do not omit any. If there are multiple, list them all, even if they are of the same category.
+
+If there are no email addresses or feminine names, respond exactly: No email addresses or feminine names detected.
+
+Content:
+{content} ]
 
 

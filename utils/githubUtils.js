@@ -1,4 +1,3 @@
-import Papa from "papaparse";
 import { fetchFileContent } from "./fileUtils.js";
 import {
   detectSensitiveDataTxt,
@@ -115,11 +114,29 @@ export async function createIssue(context, vulnerabilities) {
   }
 }
 
+export async function createIssueGemini(context, vulnerabilities) {
+  const body = vulnerabilities
+    .map(vuln => `In **${vuln.file}** (${vuln.label}) ${vuln.matches.join(', ')}`)
+    .join('\n');
+  const issue = context.issue({
+    title: 'Sensitive information found',
+    body
+  });
+
+  try {
+    context.log.info('Creating issue with body:', body);
+    await context.octokit.issues.create(issue);
+    context.log.info('Issue created successfully');
+  } catch (error) {
+    context.log.error('Error creating issue:', error);
+  }
+}
+
 export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions, fileTypes) {
   const branchName = `remove-sensitive-data-${Date.now()}`;
   const baseBranch = payload.repository.default_branch;
   const modifiedFiles = getModifiedFiles(payload);
-  console.log(`Modified files: ${fileTypes.join(', ')}`);
+  console.log(`File Types: ${fileTypes.join(', ')}`);
   console.log(`modifiedFiles: ${modifiedFiles.join(', ')}`);
 
   // Soportar todos los tipos de archivos
@@ -141,7 +158,7 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
     if (!extObj) continue;
     console.log(`File type detected: ${extObj.type}`);
     // Solo procesar si el tipo está permitido en la configuración
-    if (!fileTypes.includes(extObj.ext)) continue;
+    if (!fileTypes.includes(extObj.type)) continue;
 
     const fileContent = await fetchFileContent(context, payload, file);
     console.log(`Fetched content for ${file}:`, fileContent ? 'Content retrieved' : 'No content found');
@@ -164,6 +181,33 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
       if (fileVulnerabilities.length > 0) {
         vulnerabilities[file] = fileVulnerabilities;
         let updatedContent = fileContent;
+
+        if (file.endsWith('.json')) {
+          try {
+            const jsonObj = JSON.parse(fileContent);
+            if (!jsonObj._sensitibot_validated) {
+              jsonObj._sensitibot_validated = "✅ Validado por SensitiBot: No contiene vulnerabilidades";
+            }
+            updatedContent = JSON.stringify(jsonObj, null, 2);
+          } catch (e) {
+            // Si falla el parseo, deja el contenido igual (o maneja el error según tu lógica)
+            updatedContent = fileContent;
+          }
+        } else if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+          const validationBadge = '# ✅ Validado por SensitiBot: No contiene vulnerabilidades\n';
+          if (!updatedContent.startsWith(validationBadge)) {
+            updatedContent = validationBadge + updatedContent;
+          }
+        } else if (file.endsWith('.md')) {
+          const validationBadge = '> ✅ Validado por SensitiBot: No contiene vulnerabilidades\n\n';
+          if (!updatedContent.startsWith(validationBadge)) {
+            updatedContent = validationBadge + updatedContent;
+          }
+        } else if (file.endsWith('.csv') || file.endsWith('.txt')) {
+          const validationBadge = '# ✅ Validado por SensitiBot: No contiene vulnerabilidades\n';
+          updatedContent = validationBadge + updatedContent;
+        }
+
         for (const vuln of fileVulnerabilities) {
           if (Array.isArray(vuln.matches)) {
             for (const m of vuln.matches) {

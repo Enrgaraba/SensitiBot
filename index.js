@@ -6,9 +6,11 @@ import {
   analyzeMdFiles,
   analyzeJsonFiles,
   analyzeYamlFiles,
-  createPullRequestToRemoveSensitiveData 
+  createPullRequestToRemoveSensitiveData, 
+  createIssueGemini
 } from "./utils/githubUtils.js";
 import { parseConfiguration } from "./utils/fileUtils.js";
+import { detectSensitiveDataWithGemini } from "./utils/securityPatterns.js"; // <-- Importa la función Gemini
 import { Buffer } from "buffer";
 
 /**
@@ -91,6 +93,8 @@ const appFunction = (app) => {
     */
     let vulnerabilities = [];
 
+    // Detección tradicional (regex/patrones) solo si detectionEngine es "patrones" o "ambos"
+    
     if (txtFiles.length > 0) {
       const txtVulns = await analyzeTxtFiles(context, payload, txtFiles, config.patterns, config.exclusions);
       console.log("DEBUG: TXT vulnerabilities:", txtVulns);
@@ -116,17 +120,62 @@ const appFunction = (app) => {
       console.log("DEBUG: YAML vulnerabilities:", yamlVulns);
       vulnerabilities = vulnerabilities.concat(yamlVulns);
     }
+    
+
+    // Si el motor de detección es Gemini, añade sus resultados SOLO para la creación de issues
+    let geminiVulnerabilities = [];
+    if (config.detectionEngine === "gemini") {
+      for (const file of filteredFiles) {
+        const fileContent = await context.octokit.repos.getContent({
+          owner,
+          repo,
+          path: file,
+        });
+        const content = Buffer.from(fileContent.data.content, "base64").toString("utf-8");
+        const type = file.split('.').pop();
+        try {
+          const geminiResult = await detectSensitiveDataWithGemini(
+            content,
+            type,
+            process.env.GEMINI_API_KEY,
+            config.geminiPrompt
+          );
+          if (!geminiResult.includes("No se detectó contenido sensible")) {
+            geminiVulnerabilities.push({ file, label: "Gemini", matches: [geminiResult] });
+          }
+        } catch (e) {
+          console.error("DEBUG: Gemini API error:", e);
+        }
+      }
+    }
 
     console.log("DEBUG: All vulnerabilities found:", vulnerabilities);
+    console.log("DEBUG: Gemini vulnerabilities found:", geminiVulnerabilities);
 
-    if (vulnerabilities.length > 0) {
+    if (vulnerabilities.length > 0 || geminiVulnerabilities.length > 0) {
       if (config.onDetection === "Alert" || config.onDetection === "Full") {
         console.log("DEBUG: Creating issue for vulnerabilities...");
-        await createIssue(context, vulnerabilities);
+        // Si el motor es solo gemini, solo reporta las de gemini
+        if (config.detectionEngine === "gemini") {
+          await createIssueGemini(context, geminiVulnerabilities);
+        } else {
+          // Si es patrones o ambos, incluye ambas fuentes
+          await createIssue(context, vulnerabilities);
+        }
       }
-      if (config.onDetection === "Block" || config.onDetection === "Full") {
+      if (
+        vulnerabilities.length > 0 &&
+        (config.onDetection === "Block" || config.onDetection === "Full")
+      ) {
+        // SOLO usa el flujo tradicional para PR
         console.log("DEBUG: Creating PR to remove sensitive data...");
-        await createPullRequestToRemoveSensitiveData(context, payload, config.patterns, config.exclusions, config.fileTypes);
+        await createPullRequestToRemoveSensitiveData(
+          context,
+          payload,
+          config.patterns,
+          config.exclusions,
+          config.fileTypes
+        );
       }
     } else {
       console.log("DEBUG: No vulnerabilities found.");
