@@ -216,7 +216,9 @@ detected:
 *   **Other type:** \`another example\` (brief explanation if applicable)
 *   **Other type:** \`another example\` (brief explanation if applicable)
 
-Where "Data type" should be the actual type of sensitive data detected (for example: Credit card, Password, Token, etc.) and "example found" should be a real example of the data found in the content.
+Where "Data type" should be the actual type of sensitive data detected 
+(for example: phone numbers like 612 34 56 78, credit card numbers like 4111 5441 3111 1111, email addresses like usuario.ejemplo@gmail.com, bank accounts like 2100 0418 4502 0005 1332) 
+and "example found" should be a real example of the data found in the content.
 
 **You must enumerate ALL different types of sensitive data you find in the content, each on a separate line.**
 

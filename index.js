@@ -46,11 +46,9 @@ const appFunction = (app) => {
       });
       configContent = Buffer.from(fileContent.data.content, "base64").toString("utf-8");
       context.log.info("Configuration file content:", configContent);
-      console.log("DEBUG: Raw config content:", configContent);
     } catch (error) {
-      context.log.error(`Error reading configuration file: ${error.message}`);
-      console.error("DEBUG: Error reading configuration file:", error);
-      return;
+      context.log.error(`Configuration file missing, the bot will use default values: ${error.message}`);
+      // Continúa con configContent vacío (valores por defecto)
     }
 
     // Parse the configuration file
@@ -58,10 +56,10 @@ const appFunction = (app) => {
     try {
       config = parseConfiguration(configContent);
       context.log.info("Parsed configuration:", config);
-      console.log("DEBUG: Parsed config object:", config);
+      
     } catch (error) {
       context.log.error(`Error parsing configuration file: ${error.message}`);
-      console.error("DEBUG: Error parsing configuration file:", error);
+      
       return;
     }
 
@@ -69,14 +67,14 @@ const appFunction = (app) => {
     const { payload } = context;
     const files = getModifiedFiles(payload);
     context.log.info("Files in the push", files);
-    console.log("DEBUG: Files in the push:", files);
+    
 
     // Filter files based on the configured file types
     const filteredFiles = files.filter(file => 
       config.fileTypes.some(ext => file.endsWith(ext))
     );
     context.log.info("Filtered files by type:", filteredFiles);
-    console.log("DEBUG: Filtered files by type:", filteredFiles);
+    
 
     // Separate files by type
     const txtFiles = filteredFiles.filter(file => file.endsWith('.txt'));
@@ -84,40 +82,34 @@ const appFunction = (app) => {
     const mdFiles = filteredFiles.filter(file => file.endsWith('.md'));
     const jsonFiles = filteredFiles.filter(file => file.endsWith('.json'));
     const yamlFiles = filteredFiles.filter(file => file.endsWith('.yaml') || file.endsWith('.yml'));
-    /*
-    console.log("DEBUG: TXT files:", txtFiles);
-    console.log("DEBUG: CSV files:", csvFiles);
-    console.log("DEBUG: MD files:", mdFiles);
-    console.log("DEBUG: JSON files:", jsonFiles);
-    console.log("DEBUG: YAML files:", yamlFiles);
-    */
+    
     let vulnerabilities = [];
 
     // Detección tradicional (regex/patrones) solo si detectionEngine es "patrones" o "ambos"
     
     if (txtFiles.length > 0) {
       const txtVulns = await analyzeTxtFiles(context, payload, txtFiles, config.patterns, config.exclusions);
-      console.log("DEBUG: TXT vulnerabilities:", txtVulns);
+      
       vulnerabilities = vulnerabilities.concat(txtVulns);
     }
     if (csvFiles.length > 0) {
       const csvVulns = await analyzeCsvFiles(context, payload, csvFiles, config.patterns, config.exclusions);
-      console.log("DEBUG: CSV vulnerabilities:", csvVulns);
+      
       vulnerabilities = vulnerabilities.concat(csvVulns);
     }
     if (mdFiles.length > 0) {
       const mdVulns = await analyzeMdFiles(context, payload, mdFiles, config.patterns, config.exclusions);
-      console.log("DEBUG: MD vulnerabilities:", mdVulns);
+      
       vulnerabilities = vulnerabilities.concat(mdVulns);
     }
     if (jsonFiles.length > 0) {
       const jsonVulns = await analyzeJsonFiles(context, payload, jsonFiles, config.patterns, config.exclusions);
-      console.log("DEBUG: JSON vulnerabilities:", jsonVulns);
+      
       vulnerabilities = vulnerabilities.concat(jsonVulns);
     }
     if (yamlFiles.length > 0) {
       const yamlVulns = await analyzeYamlFiles(context, payload, yamlFiles, config.patterns, config.exclusions);
-      console.log("DEBUG: YAML vulnerabilities:", yamlVulns);
+      
       vulnerabilities = vulnerabilities.concat(yamlVulns);
     }
     
@@ -149,17 +141,13 @@ const appFunction = (app) => {
       }
     }
 
-    console.log("DEBUG: All vulnerabilities found:", vulnerabilities);
-    console.log("DEBUG: Gemini vulnerabilities found:", geminiVulnerabilities);
+
 
     if (vulnerabilities.length > 0 || geminiVulnerabilities.length > 0) {
       if (config.onDetection === "Alert" || config.onDetection === "Full") {
-        console.log("DEBUG: Creating issue for vulnerabilities...");
-        // Si el motor es solo gemini, solo reporta las de gemini
         if (config.detectionEngine === "gemini") {
           await createIssueGemini(context, geminiVulnerabilities);
         } else {
-          // Si es patrones o ambos, incluye ambas fuentes
           await createIssue(context, vulnerabilities);
         }
       }
@@ -167,14 +155,13 @@ const appFunction = (app) => {
         vulnerabilities.length > 0 &&
         (config.onDetection === "Block" || config.onDetection === "Full")
       ) {
-        // SOLO usa el flujo tradicional para PR
-        console.log("DEBUG: Creating PR to remove sensitive data...");
         await createPullRequestToRemoveSensitiveData(
           context,
           payload,
           config.patterns,
           config.exclusions,
-          config.fileTypes
+          config.fileTypes,
+          config.trustBadge
         );
       }
     } else {

@@ -132,7 +132,7 @@ export async function createIssueGemini(context, vulnerabilities) {
   }
 }
 
-export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions, fileTypes) {
+export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions, fileTypes, trustBadge) {
   const branchName = `remove-sensitive-data-${Date.now()}`;
   const baseBranch = payload.repository.default_branch;
   const modifiedFiles = getModifiedFiles(payload);
@@ -177,35 +177,40 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
       console.log(`Detected vulnerabilities in ${file}:`, fileVulnerabilities);
 
       // Filtra solo los objetos con matches reales
-      console.log(`a`);
       if (fileVulnerabilities.length > 0) {
         vulnerabilities[file] = fileVulnerabilities;
         let updatedContent = fileContent;
 
-        if (file.endsWith('.json')) {
-          try {
-            const jsonObj = JSON.parse(fileContent);
-            if (!jsonObj._sensitibot_validated) {
-              jsonObj._sensitibot_validated = "✅ Validado por SensitiBot: No contiene vulnerabilidades";
+        // Badge logic based on trustBadge config
+        const shouldAddBadge =
+          trustBadge === "fullbadge" ||
+          (trustBadge === "nojson" && extObj.type !== "json");
+
+        if (shouldAddBadge) {
+          if (file.endsWith('.json')) {
+            try {
+              const jsonObj = JSON.parse(fileContent);
+              if (!jsonObj._sensitibot_validated) {
+                jsonObj._sensitibot_validated = "✅ Validated by SensitiBot: No vulnerabilities found";
+              }
+              updatedContent = JSON.stringify(jsonObj, null, 2);
+            } catch (e) {
+              updatedContent = fileContent;
             }
-            updatedContent = JSON.stringify(jsonObj, null, 2);
-          } catch (e) {
-            // Si falla el parseo, deja el contenido igual (o maneja el error según tu lógica)
-            updatedContent = fileContent;
-          }
-        } else if (file.endsWith('.yaml') || file.endsWith('.yml')) {
-          const validationBadge = '# ✅ Validado por SensitiBot: No contiene vulnerabilidades\n';
-          if (!updatedContent.startsWith(validationBadge)) {
+          } else if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+            const validationBadge = '# ✅ Validated by SensitiBot: No vulnerabilities found\n';
+            if (!updatedContent.startsWith(validationBadge)) {
+              updatedContent = validationBadge + updatedContent;
+            }
+          } else if (file.endsWith('.md')) {
+            const validationBadge = '> ✅ Validated by SensitiBot: No vulnerabilities found\n\n';
+            if (!updatedContent.startsWith(validationBadge)) {
+              updatedContent = validationBadge + updatedContent;
+            }
+          } else if (file.endsWith('.csv') || file.endsWith('.txt')) {
+            const validationBadge = '# ✅ Validated by SensitiBot: No vulnerabilities found\n';
             updatedContent = validationBadge + updatedContent;
           }
-        } else if (file.endsWith('.md')) {
-          const validationBadge = '> ✅ Validado por SensitiBot: No contiene vulnerabilidades\n\n';
-          if (!updatedContent.startsWith(validationBadge)) {
-            updatedContent = validationBadge + updatedContent;
-          }
-        } else if (file.endsWith('.csv') || file.endsWith('.txt')) {
-          const validationBadge = '# ✅ Validado por SensitiBot: No contiene vulnerabilidades\n';
-          updatedContent = validationBadge + updatedContent;
         }
 
         for (const vuln of fileVulnerabilities) {

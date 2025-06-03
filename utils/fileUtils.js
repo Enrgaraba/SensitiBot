@@ -74,6 +74,15 @@ export const parseConfiguration = (configContent) => {
     config.detectionEngine = "patterns";
   }
 
+  // Extract TrustBadge option
+  const trustBadgeMatch = configContent.match(/TrustBadge:\s*(\w+)/i);
+  const allowedTrustBadge = ['fullbadge', 'nobadge', 'nojson'];
+  if (trustBadgeMatch && allowedTrustBadge.includes(trustBadgeMatch[1].toLowerCase())) {
+    config.trustBadge = trustBadgeMatch[1].toLowerCase();
+  } else {
+    config.trustBadge = "nojson";
+  }
+
   // Extract Gemini custom prompt (must be inside [])
   const geminiPromptMatch = configContent.match(/GeminiPrompt:\s*\[(.*?)\]/s);
   if (geminiPromptMatch && geminiPromptMatch[1].trim().length > 0) {
