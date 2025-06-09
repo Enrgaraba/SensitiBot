@@ -1,15 +1,21 @@
 import Papa from "papaparse";
-// Importa los patrones desde patterns.js
 import { defaultPatterns } from "./patterns.js";
 
+
 /**
- * Detecta datos sensibles en cualquier tipo de archivo soportado por el bot.
- * El parámetro "type" debe ser uno de: 'txt', 'csv', 'md', 'json', 'yaml', 'yml'
- * El parámetro "fileTypes" es un array de extensiones soportadas, extraído del archivo de configuración.
+ * Detects sensitive data for PRs in various file types.
+ * @param {string} file - File name.
+ * @param {string} content - File content.
+ * @param {object} context - Probot context object.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @param {string} type - File type.
+ * @param {Array} fileTypes - Supported file types.
+ * @returns {Array} - Array of detected vulnerabilities.
  */
 export function detectSensitiveDataForPR(file, content, context, patterns, exclusions, type, fileTypes) {
 
-  // Extrae la extensión real del archivo
+  
   const fileExt =  file.split('.').pop().toLowerCase();
   if (!fileTypes.includes(fileExt)) {
     context.log.info(`File extension "${fileExt}" for file "${file}" is not enabled in configuration. Skipping.`);
@@ -19,13 +25,13 @@ export function detectSensitiveDataForPR(file, content, context, patterns, exclu
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detectedMatches = [];
 
-  // Utilidad para filtrar exclusiones
+
   const filterExclusions = (matches) =>
     exclusions && exclusions.length > 0
       ? matches.filter(match => !exclusions.includes(match))
       : matches;
 
-  // Selección de lógica según tipo de archivo
+  // Logic selection according to file type
   if (type === "csv") {
     const { data } = Papa.parse(content, { header: false, skipEmptyLines: true });
     for (const row of data) {
@@ -93,11 +99,17 @@ export function detectSensitiveDataForPR(file, content, context, patterns, exclu
   return detectedMatches;
 }
 
+/**
+ * Detects sensitive data in .txt files.
+ * @param {string} content - File content.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Array} - Array of detected vulnerabilities.
+ */
 export function detectSensitiveDataTxt(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
   for (const [label, pattern] of patternsToUse) {
-    // Desescapa las barras dobles a simples
     const regexPattern = pattern.replace(/\\\\/g, '\\');
     const regex = new RegExp(regexPattern, "g");
     const matches = content.match(regex);
@@ -111,6 +123,13 @@ export function detectSensitiveDataTxt(content, patterns, exclusions) {
   return detected;
 }
 
+/**
+ * Detects sensitive data in .csv files.
+ * @param {string} content - File content.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Array} - Array of detected vulnerabilities.
+ */
 export function detectSensitiveDataCsv(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
@@ -132,6 +151,13 @@ export function detectSensitiveDataCsv(content, patterns, exclusions) {
   return detected;
 }
 
+/**
+ * Detects sensitive data in .md files.
+ * @param {string} content - File content.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Array} - Array of detected vulnerabilities.
+ */
 export function detectSensitiveDataMd(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
@@ -149,6 +175,13 @@ export function detectSensitiveDataMd(content, patterns, exclusions) {
   return detected;
 }
 
+/**
+ * Detects sensitive data in .json files.
+ * @param {string} content - File content.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Array} - Array of detected vulnerabilities.
+ */
 export function detectSensitiveDataJson(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
@@ -156,7 +189,7 @@ export function detectSensitiveDataJson(content, patterns, exclusions) {
   try {
     jsonObj = JSON.parse(content);
   } catch (e) {
-    return detected; // Si no es JSON válido, no detecta nada
+    return detected;
   }
   const jsonString = JSON.stringify(jsonObj);
   for (const [label, pattern] of patternsToUse) {
@@ -173,10 +206,16 @@ export function detectSensitiveDataJson(content, patterns, exclusions) {
   return detected;
 }
 
+/**
+ * Detects sensitive data in .yaml or .yml files.
+ * @param {string} content - File content.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Array} - Array of detected vulnerabilities.
+ */
 export function detectSensitiveDataYaml(content, patterns, exclusions) {
   const patternsToUse = (patterns && patterns.length > 0) ? patterns : defaultPatterns;
   const detected = [];
-  // No se parsea YAML, se busca sobre el texto plano
   for (const [label, pattern] of patternsToUse) {
     const regexPattern = pattern.replace(/\\\\/g, '\\');
     const regex = new RegExp(regexPattern, "g");
@@ -192,12 +231,12 @@ export function detectSensitiveDataYaml(content, patterns, exclusions) {
 }
 
 /**
- * Detecta contenido sensible usando la API de Gemini.
- * @param {string} content - Contenido del archivo.
- * @param {string} type - Tipo de archivo: 'txt', 'csv', 'md', 'json', 'yaml', 'yml'.
- * @param {string} apiKey - API Key de Gemini.
- * @param {string} [customPrompt] - Prompt personalizado con {type} y {content}.
- * @returns {Promise<string>} - Respuesta de Gemini con el análisis.
+ * Detects sensitive content using the Gemini API.
+ * @param {string} content - File content.
+ * @param {string} type - File type: 'txt', 'csv', 'md', 'json', 'yaml', 'yml'.
+ * @param {string} apiKey - Gemini API Key.
+ * @param {string} [customPrompt] - Custom prompt with {type} and {content}.
+ * @returns {Promise<string>} - Gemini response with the analysis.
  */
 export async function detectSensitiveDataWithGemini(content, type, apiKey, customPrompt) {
   let prompt;

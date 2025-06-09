@@ -1,3 +1,10 @@
+/**
+ * Fetches the content of a file from a GitHub repository.
+ * @param {object} context - Probot context object with octokit instance.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string} file - Path to the file in the repository.
+ * @returns {Promise<string|null>} - The file content as UTF-8 string, or null if error.
+ */
 export async function fetchFileContent(context, payload, file) {
   try {
     const content = await context.octokit.repos.getContent({
@@ -14,6 +21,11 @@ export async function fetchFileContent(context, payload, file) {
   }
 }
 
+/**
+ * Parses the configuration content and extracts patterns, file types, actions, exclusions, detection engine, trust badge, and Gemini prompt.
+ * @param {string} configContent - Raw configuration file content.
+ * @returns {object} - Parsed configuration object.
+ */
 export const parseConfiguration = (configContent) => {
   const config = {};
 

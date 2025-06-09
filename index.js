@@ -21,7 +21,7 @@ const appFunction = (app) => {
   app.log.info("Yay, the app was loaded!");
 
   app.on("push", async (context) => {
-    const branchRef = context.payload.ref; // formato: refs/heads/branch-name
+    const branchRef = context.payload.ref; 
     const branchName = branchRef.replace('refs/heads/', '');
 
     // Ignore pushes to bot-generated branches
@@ -48,7 +48,7 @@ const appFunction = (app) => {
       context.log.info("Configuration file content:", configContent);
     } catch (error) {
       context.log.error(`Configuration file missing, the bot will use default values: ${error.message}`);
-      // Continúa con configContent vacío (valores por defecto)
+      // Continue with empty configContent (default values)
     }
 
     // Parse the configuration file
@@ -85,7 +85,7 @@ const appFunction = (app) => {
     
     let vulnerabilities = [];
 
-    // Detección tradicional (regex/patrones) solo si detectionEngine es "patrones" o "ambos"
+    // Analyze each type of file for sensitive data by using the configured patterns and exclusions
     
     if (txtFiles.length > 0) {
       const txtVulns = await analyzeTxtFiles(context, payload, txtFiles, config.patterns, config.exclusions);
@@ -114,7 +114,7 @@ const appFunction = (app) => {
     }
     
 
-    // Si el motor de detección es Gemini, añade sus resultados SOLO para la creación de issues
+    // If the detection engine is Gemini, add its results ONLY for issue creation
     let geminiVulnerabilities = [];
     if (config.detectionEngine === "gemini") {
       for (const file of filteredFiles) {

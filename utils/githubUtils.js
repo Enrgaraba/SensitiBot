@@ -8,6 +8,11 @@ import {
   detectSensitiveDataYaml
 } from "./securityPatterns.js";
 
+/**
+ * Gets the list of modified files, excluding the configuration file.
+ * @param {object} payload - GitHub webhook payload.
+ * @returns {string[]} - Array of modified file paths.
+ */
 export function getModifiedFiles(payload) {
   // Exclude the configuration file from the list of modified files
   const configFile = "configuration-sensitibot.txt";
@@ -16,6 +21,15 @@ export function getModifiedFiles(payload) {
     .filter(file => !file.endsWith(configFile));
 }
 
+/**
+ * Analyzes .txt files for sensitive data.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string[]} files - List of files to analyze.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Promise<Array>} - Array of vulnerabilities found.
+ */
 export async function analyzeTxtFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
@@ -32,6 +46,15 @@ export async function analyzeTxtFiles(context, payload, files, patterns, exclusi
   return vulnerabilities;
 }
 
+/**
+ * Analyzes .csv files for sensitive data.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string[]} files - List of files to analyze.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Promise<Array>} - Array of vulnerabilities found.
+ */
 export async function analyzeCsvFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
@@ -48,6 +71,15 @@ export async function analyzeCsvFiles(context, payload, files, patterns, exclusi
   return vulnerabilities;
 }
 
+/**
+ * Analyzes .md files for sensitive data.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string[]} files - List of files to analyze.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Promise<Array>} - Array of vulnerabilities found.
+ */
 export async function analyzeMdFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
@@ -64,6 +96,15 @@ export async function analyzeMdFiles(context, payload, files, patterns, exclusio
   return vulnerabilities;
 }
 
+/**
+ * Analyzes .json files for sensitive data.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string[]} files - List of files to analyze.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Promise<Array>} - Array of vulnerabilities found.
+ */
 export async function analyzeJsonFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
@@ -80,6 +121,15 @@ export async function analyzeJsonFiles(context, payload, files, patterns, exclus
   return vulnerabilities;
 }
 
+/**
+ * Analyzes .yaml and .yml files for sensitive data.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {string[]} files - List of files to analyze.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @returns {Promise<Array>} - Array of vulnerabilities found.
+ */
 export async function analyzeYamlFiles(context, payload, files, patterns, exclusions) {
   const vulnerabilities = [];
   for (const file of files) {
@@ -96,6 +146,12 @@ export async function analyzeYamlFiles(context, payload, files, patterns, exclus
   return vulnerabilities;
 }
 
+/**
+ * Creates a GitHub issue for found vulnerabilities.
+ * @param {object} context - Probot context object.
+ * @param {Array} vulnerabilities - Array of vulnerabilities found.
+ * @returns {Promise<void>}
+ */
 export async function createIssue(context, vulnerabilities) {
   const body = vulnerabilities
     .map(vuln => `**${vuln.file}** Contains (${vuln.label}): ${vuln.matches.join(', ')}`)
@@ -114,6 +170,12 @@ export async function createIssue(context, vulnerabilities) {
   }
 }
 
+/**
+ * Creates a GitHub issue for vulnerabilities found by Gemini.
+ * @param {object} context - Probot context object.
+ * @param {Array} vulnerabilities - Array of vulnerabilities found.
+ * @returns {Promise<void>}
+ */
 export async function createIssueGemini(context, vulnerabilities) {
   const body = vulnerabilities
     .map(vuln => `In **${vuln.file}** (${vuln.label}) ${vuln.matches.join(', ')}`)
@@ -132,6 +194,16 @@ export async function createIssueGemini(context, vulnerabilities) {
   }
 }
 
+/**
+ * Creates a pull request to remove sensitive data from files.
+ * @param {object} context - Probot context object.
+ * @param {object} payload - GitHub webhook payload.
+ * @param {Array} patterns - Patterns to detect.
+ * @param {Array} exclusions - Exclusions to ignore.
+ * @param {Array} fileTypes - Supported file types.
+ * @param {string} trustBadge - Trust badge configuration.
+ * @returns {Promise<void>}
+ */
 export async function createPullRequestToRemoveSensitiveData(context, payload, patterns, exclusions, fileTypes, trustBadge) {
   const branchName = `remove-sensitive-data-${Date.now()}`;
   const baseBranch = payload.repository.default_branch;
@@ -157,13 +229,13 @@ export async function createPullRequestToRemoveSensitiveData(context, payload, p
     console.log(`Processing file: ${file}, extension object:`, extObj);
     if (!extObj) continue;
     console.log(`File type detected: ${extObj.type}`);
-    // Solo procesar si el tipo está permitido en la configuración
+    
     if (!fileTypes.includes(extObj.type)) continue;
 
     const fileContent = await fetchFileContent(context, payload, file);
     console.log(`Fetched content for ${file}:`, fileContent ? 'Content retrieved' : 'No content found');
     if (fileContent) {
-      // Detecta tipo de archivo y pásalo a la función, junto con fileTypes
+      
       const fileVulnerabilities = detectSensitiveDataForPR(
         file,
         fileContent,
